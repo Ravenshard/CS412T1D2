@@ -88,16 +88,18 @@ def main():
     rospy.init_node('donut_botSM')
 
     # Create a SMACH state machine
-    sm_eat = smach.StateMachine(outcomes=['poop'])
+    # sm_eat = smach.StateMachine(outcomes=['poop'])
+    sm_traveller = smach.Statemachine(outcomes=['finished'])
 
     # Open the container
-    with sm_eat:
-        # Add states to the container
-        # smach.StateMachine.add('GET_DONUT', GetDonut(),
-        #                     transitions={'hungry':'EAT_DONUT'})
-        # smach.StateMachine.add('EAT_DONUT', EatDonut(),
-        #                     transitions={'not_full':'GET_DONUT',
-        #                         'full':'poop'})
+    # with sm_eat:
+    # Add states to the container
+    # smach.StateMachine.add('GET_DONUT', GetDonut(),
+    #                     transitions={'hungry':'EAT_DONUT'})
+    # smach.StateMachine.add('EAT_DONUT', EatDonut(),
+    #                     transitions={'not_full':'GET_DONUT',
+    #                         'full':'poop'})
+    with sm_traveller:
         smach.StateMachine.add('FORWARD', forward(),
                             transitions={'collision': 'BACKUP'})
         smach.StateMachine.add('WAIT', wait(),
@@ -119,7 +121,7 @@ def main():
 
 
     # Create and start the instrospection server - needed for smach_viewer
-    sis = smach_ros.IntrospectionServer('EATING_server', sm_eat, 'DONUT_BOTSM')
+    sis = smach_ros.IntrospectionServer('TRAVELLER_server', sm_traveller, 'STATEMACHINE')
     sis.start()
 
 
