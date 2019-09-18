@@ -1,0 +1,12 @@
+Four commands:
+
+roscore
+rosluanch turtlebot_gazebo turtlebot_world.launch
+rosluanch turtlebot_rviz_launchers view_robot.launch
+./distance_ahead.py
+
+NOTE:
+In order for ./distance_ahead.py to work, you need to change the file to also
+be an executable file.  Here's how:
+chmod +x distance_ahead.py
+chmod +x allows the file to be an executable, which is what the ./ command is
