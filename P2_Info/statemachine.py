@@ -43,7 +43,7 @@ class Forward(smach.State):
                     twist.angular.z = 0.2
                     cmd_vel_pub.publish(twist)
                 else:
-                    if previous_difference < difference:
+                    if difference < 0.5:
                         print("Done turn")
                         turning = False
                         twist.angular.z = 0
@@ -54,7 +54,7 @@ class Forward(smach.State):
 
                 if previous_difference != difference:
                     print("target"+str(target_heading))
-                    print("yaw"+str(heading))
+                    print("heading"+str(heading))
                     print("Difference"+str(difference))
                     previous_difference = difference
             rospy.sleep(5)
@@ -98,7 +98,7 @@ class TurnRight(smach.State):
                 twist.angular.z = -0.2
                 cmd_vel_pub.publish(twist)
             else:
-                if previous_difference < difference:
+                if difference < 0.5:
                     turning = False
                     twist.angular.z = 0
                     cmd_vel_pub.publish(twist)
@@ -132,7 +132,7 @@ class TurnLeft(smach.State):
                 twist.angular.z = 0.2
                 cmd_vel_pub.publish(twist)
             else:
-                if previous_difference < difference:
+                if difference < 0.5:
                     turning = False
                     twist.angular.z = 0
                     cmd_vel_pub.publish(twist)
