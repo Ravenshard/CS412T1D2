@@ -23,42 +23,23 @@ class Wait(smach.State):
 
 class Forward(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['collision', 'finish'],
-                                input_keys=['robotX', 'robotY'],
-                                output_keys=['robotX', 'robotY'])
-        self.x = 0
-        self.y = 0
+        smach.State.__init__(self, outcomes=['collision', 'finish'])
 
     def execute(self, userdata):
-        rospy.loginfo('Executing state FORWARD')
-        rospy.Subscriber("odom", Odometry, cb_odom)
-        cmd_vel_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
-        green_light_twist = Twist()
-        green_light_twist.linear.x = 0.5
-        while userdata.robotX < 3:
-            cmd_vel_pub.publish(green_light_twist)
-            userdata.robotX += self.x
-            userdata.robotY += self.y
-
-        return 'finish'
-
-    def cb_odom(self, msg):
-        self.x = msg.pose.pose.position.x
-        self.y = msg.pose.pose.position.y
-        return
-
         global heading
         twist = Twist()
-        global cmd_vel_pub
+        global cmd_vel_pub, DistanceX
 
-        while True:
+        while DistanceX < 3:
             target_heading = (heading + 90) % 360
 
             turning = True
             previous_difference = None
             while turning:
-                difference = minimum_angle_between_headings(target_heading, heading)
+                twist.linear.x = 0.5
+                cmd_vel_pub.publish(twist)
 
+                difference = minimum_angle_between_headings(target_heading, heading)
                 if previous_difference is None:
                     twist.angular.z = 0.2
                     cmd_vel_pub.publish(twist)
@@ -82,17 +63,38 @@ class Forward(smach.State):
 
 class ForwardTimed(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['collision', 'successLeft', 'successRight'],
-                                input_keys=['robotX', 'robotY'],
-                                output_keys=['robotX', 'robotY'])
+        smach.State.__init__(self, outcomes=['collision', 'successLeft', 'successRight'])
 
     def execute(self, userdata):
         rospy.loginfo('Executing state FORWARDTIMED')
-        cmd_vel_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
-        green_light_twist = Twist()
-        green_light_twist.linear.x = 0.5
-        while userdata.robotX < 3:
-            cmd_vel_pub.publish(green_light_twist)
+        global heading
+        twist = Twist()
+        global cmd_vel_pub
+        executeStart = rospy.Time.now()
+        duration = 3
+        while rospy.Time.now() < executeStart + duration:
+            twist.linear.x = 0.5
+            cmd_vel_pub.publish(twist)
+            difference = minimum_angle_between_headings(target_heading, heading)
+
+            if previous_difference is None:
+                twist.angular.z = 0.2
+                cmd_vel_pub.publish(twist)
+            else:
+                if previous_difference < difference:
+                    print("Done turn")
+                    turning = False
+                    twist.angular.z = 0
+                    cmd_vel_pub.publish(twist)
+                else:
+                    twist.angular.z = 0.2
+                    cmd_vel_pub.publish(twist)
+
+            if previous_difference != difference:
+                print("target"+str(target_heading))
+                print("yaw"+str(heading))
+                print("Difference"+str(difference))
+                previous_difference = difference
 
 
 class Backup(smach.State):
@@ -101,6 +103,17 @@ class Backup(smach.State):
 
     def execute(self, userdata):
         rospy.loginfo("executing state BACKUP")
+        rospy.loginfo('Executing state FORWARDTIMED')
+        global heading
+        twist = Twist()
+        global cmd_vel_pub
+        executeStart = rospy.Time.now()
+        duration = 3
+        while rospy.Time.now() < executeStart + duration:
+            twist.linear.x = -0.2
+            cmd_vel_pub.publish(twist)
+
+
 
 class TurnRight(smach.State):
     def __init__(self):
@@ -196,6 +209,9 @@ def odom_callback(msg):
     #print("yaw"+str(yaw))
     heading = (yaw + math.pi)*(180/math.pi)
     #print("Heading"+str(heading))
+
+# def bumper_callback(msg):
+    # global
 
 # main
 def main():
