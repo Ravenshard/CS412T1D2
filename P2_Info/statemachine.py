@@ -32,7 +32,7 @@ class Forward(smach.State):
         twist = Twist()
         global cmd_vel_pub, distX, bumperState, heading, prevState
         prevState = 'Forward'
-        while distX < 3:
+        while distX < 3.2:
             twist.linear.x = 0.5
             cmd_vel_pub.publish(twist)
             if bumperState[1] == 1:
@@ -98,7 +98,6 @@ class TurnRight(smach.State):
 
         twist = Twist()
         global cmd_vel_pub, heading, prevState
-        prevState = "TurnRight"
 
         target_heading = heading - 90
         if target_heading < 0:
