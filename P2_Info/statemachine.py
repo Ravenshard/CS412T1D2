@@ -10,7 +10,7 @@ from tf.transformations import euler_from_quaternion
 from time import sleep
 from geometry_msgs.msg import Odometry
 
-global DistanceX, DistanceY, cmd_vel_pub, heading, bumperState, prevState
+global DistanceX, DistX, cmd_vel_pub, heading, bumperState, prevState
 DistanceX = 0
 
 class Wait(smach.State):
@@ -30,10 +30,9 @@ class Forward(smach.State):
 
     def execute(self, userdata):
         twist = Twist()
-        global cmd_vel_pub, DistanceX, bumperState, heading, prevState
-
+        global cmd_vel_pub, distX, bumperState, heading, prevState
         prevState = 'Forward'
-        while DistanceX < 3:
+        while distX < 3:
             twist.linear.x = 0.5
             cmd_vel_pub.publish(twist)
             if bumperState[1] == 1:
@@ -184,7 +183,7 @@ def minimum_angle_between_headings(a, b):
 
 
 def odom_callback(msg):
-    global heading
+    global heading, distX
     yaw = euler_from_quaternion([
         msg.pose.pose.orientation.x,
         msg.pose.pose.orientation.y,
@@ -193,7 +192,7 @@ def odom_callback(msg):
     ])[2]
     #print("yaw"+str(yaw))
     heading = (yaw + math.pi)*(180/math.pi)
-    dist = msg.pose.pose.
+    distX = msg.pose.pose.point.x
     #print("Heading"+str(heading))
 
 def bumper_callback(msg):
