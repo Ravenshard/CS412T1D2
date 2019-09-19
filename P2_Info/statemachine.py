@@ -61,7 +61,7 @@ class ForwardTimed(smach.State):
         if prevState == 'TurnRight':
             prevState = 'ForwardTimed'
             return 'successLeft'
-        elif: prevState == 'TurnLeft':
+        elif prevState == 'TurnLeft':
             prevState = 'ForwardTimed'
             return 'successRight'
 
@@ -84,7 +84,7 @@ class Backup(smach.State):
 
         if bumperState[0] == 0:   return 'successRight'
         elif bumperState[0] == 1: return 'successLeft'
-        elif bumperstate[0] == 2: return 'successLeft'
+        elif bumperState[0] == 2: return 'successLeft'
 
 
 
@@ -140,6 +140,7 @@ class TurnLeft(smach.State):
         global heading
         twist = Twist()
         global cmd_vel_pub
+        global prevState
 
         target_heading = (heading + 90) % 360
 
