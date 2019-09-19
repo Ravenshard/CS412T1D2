@@ -10,7 +10,8 @@ from tf.transformations import euler_from_quaternion
 from time import sleep
 from geometry_msgs.msg import Odometry
 
-global DistanceX, DistanceY, cmd_vel_pub, heading
+global DistanceX, DistanceY, cmd_vel_pub, heading, bumperState, prevState
+DistanceX = 0
 
 class Wait(smach.State):
     def __init__(self):
@@ -19,6 +20,8 @@ class Wait(smach.State):
     def execute(self, userdata):
         rospy.loginfo('Executing state WAIT')
         rospy.sleep(5)
+        global prevState
+        prevState = 'Wait'
         return 'start'
 
 class Forward(smach.State):
@@ -26,40 +29,17 @@ class Forward(smach.State):
         smach.State.__init__(self, outcomes=['collision', 'finish'])
 
     def execute(self, userdata):
-        global heading
         twist = Twist()
-        global cmd_vel_pub, DistanceX
+        global cmd_vel_pub, DistanceX, bumperState, heading, prevState
 
+        prevState = 'Forward'
         while DistanceX < 3:
-            target_heading = (heading + 90) % 360
-
-            turning = True
-            previous_difference = None
-            while turning:
-                twist.linear.x = 0.5
-                cmd_vel_pub.publish(twist)
-
-                difference = minimum_angle_between_headings(target_heading, heading)
-                if previous_difference is None:
-                    twist.angular.z = 0.2
-                    cmd_vel_pub.publish(twist)
-                else:
-                    if previous_difference < difference:
-                        print("Done turn")
-                        turning = False
-                        twist.angular.z = 0
-                        cmd_vel_pub.publish(twist)
-                    else:
-                        twist.angular.z = 0.2
-                        cmd_vel_pub.publish(twist)
-
-                if previous_difference != difference:
-                    print("target"+str(target_heading))
-                    print("yaw"+str(heading))
-                    print("Difference"+str(difference))
-                    previous_difference = difference
-            rospy.sleep(5)
-
+            twist.linear.x = 0.5
+            cmd_vel_pub.publish(twist)
+            if bumperState[1] == 1:
+                rospy.loginfo("bumper hit")
+                return 'collision'
+        return 'finish'
 
 class ForwardTimed(smach.State):
     def __init__(self):
@@ -67,34 +47,25 @@ class ForwardTimed(smach.State):
 
     def execute(self, userdata):
         rospy.loginfo('Executing state FORWARDTIMED')
-        global heading
         twist = Twist()
-        global cmd_vel_pub
+        global cmd_vel_pub, prevState
         executeStart = rospy.Time.now()
         duration = 3
         while rospy.Time.now() < executeStart + duration:
             twist.linear.x = 0.5
             cmd_vel_pub.publish(twist)
-            difference = minimum_angle_between_headings(target_heading, heading)
+            if bumperState[1] == 1:
+                prevState = 'ForwardTimed'
+                rospy.loginfo("bumper hit")
+                return 'collision'
 
-            if previous_difference is None:
-                twist.angular.z = 0.2
-                cmd_vel_pub.publish(twist)
-            else:
-                if previous_difference < difference:
-                    print("Done turn")
-                    turning = False
-                    twist.angular.z = 0
-                    cmd_vel_pub.publish(twist)
-                else:
-                    twist.angular.z = 0.2
-                    cmd_vel_pub.publish(twist)
+        if prevState == 'TurnRight':
+            prevState = 'ForwardTimed'
+            return 'successLeft'
+        elif: prevState == 'TurnLeft':
+            prevState = 'ForwardTimed'
+            return 'successRight'
 
-            if previous_difference != difference:
-                print("target"+str(target_heading))
-                print("yaw"+str(heading))
-                print("Difference"+str(difference))
-                previous_difference = difference
 
 
 class Backup(smach.State):
@@ -103,15 +74,19 @@ class Backup(smach.State):
 
     def execute(self, userdata):
         rospy.loginfo("executing state BACKUP")
-        rospy.loginfo('Executing state FORWARDTIMED')
-        global heading
+        global cmd_vel_pub, bumperState, prevState
+        prevState = 'Backup'
         twist = Twist()
-        global cmd_vel_pub
         executeStart = rospy.Time.now()
         duration = 3
         while rospy.Time.now() < executeStart + duration:
             twist.linear.x = -0.2
             cmd_vel_pub.publish(twist)
+
+        if bumperState[0] == 0:   return 'successRight'
+        elif bumperState[0] == 1: return 'successLeft'
+        elif bumperstate[0] == 2: return 'successLeft'
+
 
 
 
@@ -122,9 +97,9 @@ class TurnRight(smach.State):
     def execute(self, userdata):
         rospy.loginfo("executing state TURNRIGHT")
 
-        global heading
         twist = Twist()
-        global cmd_vel_pub
+        global cmd_vel_pub, heading, prevState
+        prevState = "TurnRight"
 
         target_heading = heading - 90
         if target_heading < 0:
@@ -149,7 +124,12 @@ class TurnRight(smach.State):
 
             if previous_difference != difference:
                 previous_difference = difference
-        return "success"
+        if prevState == 'Backup':
+            prevState = 'TurnRight'
+            return' successTimed'
+        elif prevState == 'ForwardTimed':
+            prevState = 'TurnRight'
+            return 'success'
 
 class TurnLeft(smach.State):
     def __init__(self):
@@ -183,7 +163,12 @@ class TurnLeft(smach.State):
 
             if previous_difference != difference:
                 previous_difference = difference
-        return "success"
+        if prevState == 'Backup':
+            prevState = 'TurnLeft'
+            return' successTimed'
+        elif prevState == 'ForwardTimed':
+            prevState = 'TurnLeft'
+            return 'success'
 
 
 def minimum_angle_between_headings(a, b):
@@ -210,8 +195,12 @@ def odom_callback(msg):
     heading = (yaw + math.pi)*(180/math.pi)
     #print("Heading"+str(heading))
 
-# def bumper_callback(msg):
-    # global
+def bumper_callback(msg):
+    global bumperState
+    bumper = msg.bumper
+    state = msg.state
+    rospy.loginfo("bumper published! bumper: {} state: {}".format(bumper, state))
+    bumperState = (bumper, state)
 
 # main
 def main():
