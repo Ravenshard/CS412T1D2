@@ -4,8 +4,8 @@ import rospy
 import smach
 import smach_ros
 from time import sleep
+from geometry_msgs.msg import Odometry
 
-global DistanceX, DistanceY
 
 class Wait(smach.State):
     def __init__(self):
@@ -17,17 +17,44 @@ class Wait(smach.State):
 
 class Forward(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['collision', 'finish'])
+        smach.State.__init__(self, outcomes=['collision', 'finish'],
+                                input_keys=['robotX', 'robotY'],
+                                output_keys=['robotX', 'robotY'])
+        self.x = 0
+        self.y = 0
 
     def execute(self, userdata):
         rospy.loginfo('Executing state FORWARD')
+        rospy.Subscriber("odom", Odometry, cb_odom)
+        cmd_vel_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
+        green_light_twist = Twist()
+        green_light_twist.linear.x = 0.5
+        while userdata.robotX < 3:
+            cmd_vel_pub.publish(green_light_twist)
+            userdata.robotX += self.x
+            userdata.robotY += self.y
+            
+        return 'finish'
+
+    def cb_odom(self, msg):
+        self.x = msg.pose.pose.position.x
+        self.y = msg.pose.pose.position.y
+        return
 
 class ForwardTimed(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['collision', 'successLeft', 'successRight'])
+        smach.State.__init__(self, outcomes=['collision', 'successLeft', 'successRight'],
+                                input_keys=['robotX', 'robotY'],
+                                output_keys=['robotX', 'robotY'])
 
     def execute(self, userdata):
         rospy.loginfo('Executing state FORWARDTIMED')
+        cmd_vel_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
+        green_light_twist = Twist()
+        green_light_twist.linear.x = 0.5
+        while userdata.robotX < 3:
+            cmd_vel_pub.publish(green_light_twist)
+
 
 class Backup(smach.State):
     def __init__(self):
@@ -50,12 +77,13 @@ class TurnLeft(smach.State):
     def execute(self, userdata):
         rospy.loginfo("executing state TURNLEFT")
 
-
 # main
 def main():
-    rospy.init_node('donut_botSM')
-
+    rospy.init_node('robotMachine')
+    rospy.Subscriber("odom", Odometry, cb_odom)
     sm_traveller = smach.StateMachine(outcomes=['finished'])
+    sm_traveller.userdata.robotX = 0
+    sm_traveller.userdata.robotY = 0
 
     with sm_traveller:
         smach.StateMachine.add('WAIT', Wait(),
