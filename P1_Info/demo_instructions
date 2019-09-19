@@ -1,8 +1,8 @@
 Four commands:
 
 roscore
-rosluanch turtlebot_gazebo turtlebot_world.launch
-rosluanch turtlebot_rviz_launchers view_robot.launch
+roslaunch turtlebot_gazebo turtlebot_world.launch
+roslaunch turtlebot_rviz_launchers view_robot.launch
 ./distance_ahead.py
 
 NOTE:

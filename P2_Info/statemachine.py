@@ -193,6 +193,7 @@ def odom_callback(msg):
     ])[2]
     #print("yaw"+str(yaw))
     heading = (yaw + math.pi)*(180/math.pi)
+    dist = msg.pose.pose.
     #print("Heading"+str(heading))
 
 def bumper_callback(msg):
