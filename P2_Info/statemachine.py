@@ -5,13 +5,13 @@ import smach
 import smach_ros
 import math
 from geometry_msgs.msg import Twist
-from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
-from time import sleep
-from geometry_msgs.msg import Odometry
+from nav_msgs.msg import Odometry
+from kobuki_msgs.msg import BumperEvent
 
 global DistanceX, DistX, cmd_vel_pub, heading, bumperState, prevState
 DistanceX = 0
+bumperState = (0,0)
 
 class Wait(smach.State):
     def __init__(self):
@@ -40,6 +40,7 @@ class Forward(smach.State):
                 return 'collision'
         return 'finish'
 
+
 class ForwardTimed(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['collision', 'successLeft', 'successRight'])
@@ -49,7 +50,7 @@ class ForwardTimed(smach.State):
         twist = Twist()
         global cmd_vel_pub, prevState
         executeStart = rospy.Time.now()
-        duration = 3
+        duration = rospy.Duration(3)
         while rospy.Time.now() < executeStart + duration:
             twist.linear.x = 0.5
             cmd_vel_pub.publish(twist)
@@ -77,16 +78,14 @@ class Backup(smach.State):
         prevState = 'Backup'
         twist = Twist()
         executeStart = rospy.Time.now()
-        duration = 3
+        duration = rospy.Duration(3)
         while rospy.Time.now() < executeStart + duration:
             twist.linear.x = -0.2
             cmd_vel_pub.publish(twist)
 
-        if bumperState[0] == 0:   return 'successRight'
+        if bumperState[0] == 0: return 'successRight'
         elif bumperState[0] == 1: return 'successLeft'
         elif bumperState[0] == 2: return 'successLeft'
-
-
 
 
 class TurnRight(smach.State):
@@ -98,7 +97,6 @@ class TurnRight(smach.State):
 
         twist = Twist()
         global cmd_vel_pub, heading, prevState
-        prevState = "TurnRight"
 
         target_heading = heading - 90
         if target_heading < 0:
@@ -113,7 +111,7 @@ class TurnRight(smach.State):
                 twist.angular.z = -0.2
                 cmd_vel_pub.publish(twist)
             else:
-                if previous_difference < difference:
+                if difference < 0.5:
                     turning = False
                     twist.angular.z = 0
                     cmd_vel_pub.publish(twist)
@@ -129,6 +127,7 @@ class TurnRight(smach.State):
         elif prevState == 'ForwardTimed':
             prevState = 'TurnRight'
             return 'success'
+
 
 class TurnLeft(smach.State):
     def __init__(self):
@@ -153,7 +152,7 @@ class TurnLeft(smach.State):
                 twist.angular.z = 0.2
                 cmd_vel_pub.publish(twist)
             else:
-                if previous_difference < difference:
+                if difference < 0.5:
                     turning = False
                     twist.angular.z = 0
                     cmd_vel_pub.publish(twist)
@@ -165,7 +164,7 @@ class TurnLeft(smach.State):
                 previous_difference = difference
         if prevState == 'Backup':
             prevState = 'TurnLeft'
-            return' successTimed'
+            return'successTimed'
         elif prevState == 'ForwardTimed':
             prevState = 'TurnLeft'
             return 'success'
@@ -182,7 +181,6 @@ def minimum_angle_between_headings(a, b):
     return heading_difference
 
 
-
 def odom_callback(msg):
     global heading, distX
     yaw = euler_from_quaternion([
@@ -191,10 +189,9 @@ def odom_callback(msg):
         msg.pose.pose.orientation.z,
         msg.pose.pose.orientation.w
     ])[2]
-    #print("yaw"+str(yaw))
     heading = (yaw + math.pi)*(180/math.pi)
-    distX = msg.pose.pose.point.x
-    #print("Heading"+str(heading))
+    distX = msg.pose.pose.position.x
+
 
 def bumper_callback(msg):
     global bumperState
@@ -203,16 +200,15 @@ def bumper_callback(msg):
     rospy.loginfo("bumper published! bumper: {} state: {}".format(bumper, state))
     bumperState = (bumper, state)
 
+
 # main
 def main():
-    #print(minimum_angle_between_headings(0, (3 * math.pi) / 2))
-    #return
-
     rospy.init_node('bumper_bot')
 
     global cmd_vel_pub
     cmd_vel_pub = rospy.Publisher('cmd_vel_mux/input/teleop', Twist, queue_size=1)
     odom_sub = rospy.Subscriber("odom", Odometry, odom_callback)
+    bum_sub = rospy.Subscriber("/mobile_base/events/bumper", BumperEvent, bumper_callback)
 
     sm_traveller = smach.StateMachine(outcomes=['finished'])
     sm_traveller.userdata.robotX = 0
