@@ -8,6 +8,7 @@ from geometry_msgs.msg import Twist
 from tf.transformations import euler_from_quaternion
 from nav_msgs.msg import Odometry
 from kobuki_msgs.msg import BumperEvent
+from kobuki_msgs.msg import LED
 
 global DistanceX, DistX, cmd_vel_pub, heading, bumperState, prevState
 DistanceX = 0
@@ -19,8 +20,17 @@ class Wait(smach.State):
 
     def execute(self, userdata):
         rospy.loginfo('Executing state WAIT')
-        rospy.sleep(5)
         global prevState
+        if prevState == 'Foward':
+            led = LED()
+            led.value = 2
+            led_pub.publish(led)
+            # turn light on
+        else:
+            led = LED()
+            led.value = 3
+            led_pub.publish(led)
+        rospy.sleep(2)
         prevState = 'Wait'
         return 'start'
 
@@ -207,6 +217,7 @@ def main():
 
     global cmd_vel_pub
     cmd_vel_pub = rospy.Publisher('cmd_vel_mux/input/teleop', Twist, queue_size=1)
+    led_pub = reospy.Publisher("/mobile_base/commands/led1", LED, queue_size=1)
     odom_sub = rospy.Subscriber("odom", Odometry, odom_callback)
     bum_sub = rospy.Subscriber("/mobile_base/events/bumper", BumperEvent, bumper_callback)
 
