@@ -13,7 +13,7 @@ def distance_ahead():
     # this node subscribes to the /scan topic and calls the 'scan_callback'
     # function for every published message
     rospy.init_node('range_ahead')
-    scan_sub = rospy.Subscriber('scan', LaserScan, scan_callback)
+    scan_sub = rospy.Subscriber('/scan', LaserScan, scan_callback)
     rospy.spin()    # loop continuously
 
 if __name__ == '__main__':

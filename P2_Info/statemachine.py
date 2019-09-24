@@ -8,11 +8,13 @@ from geometry_msgs.msg import Twist
 from tf.transformations import euler_from_quaternion
 from nav_msgs.msg import Odometry
 from kobuki_msgs.msg import BumperEvent
-from kobuki_msgs.msg import LED
+#from kobuki_msgs.msg import led
+from kobuki_msgs.msg import Sound
 
-global DistanceX, DistX, cmd_vel_pub, heading, bumperState, prevState
+global DistanceX, DistX, cmd_vel_pub, sound_pub, heading, bumperState, prevState
 DistanceX = 0
 bumperState = (0,0)
+prevState = None
 
 class Wait(smach.State):
     def __init__(self):
@@ -21,18 +23,16 @@ class Wait(smach.State):
     def execute(self, userdata):
         rospy.loginfo('Executing state WAIT')
         global prevState
-        if prevState == 'Foward':
-            led = LED()
-            led.value = 2
-            led_pub.publish(led)
-            # turn light on
+        global sound_pub
+        if prevState == "Forward":
+            sound = Sound()
+            sound.value = 6
+            sound_pub.publish(sound)
+            rospy.spin()
         else:
-            led = LED()
-            led.value = 3
-            led_pub.publish(led)
-        rospy.sleep(2)
-        prevState = 'Wait'
-        return 'start'
+            rospy.sleep(5)
+            prevState = 'Wait'
+            return 'start'
 
 class Forward(smach.State):
     def __init__(self):
@@ -42,7 +42,7 @@ class Forward(smach.State):
         twist = Twist()
         global cmd_vel_pub, distX, bumperState, heading, prevState
         prevState = 'Forward'
-        while distX < 3.2:
+        while distX < 3:
             twist.linear.x = 0.5
             cmd_vel_pub.publish(twist)
             if bumperState[1] == 1:
@@ -216,8 +216,9 @@ def main():
     rospy.init_node('bumper_bot')
 
     global cmd_vel_pub
+    global sound_pub
     cmd_vel_pub = rospy.Publisher('cmd_vel_mux/input/teleop', Twist, queue_size=1)
-    led_pub = reospy.Publisher("/mobile_base/commands/led1", LED, queue_size=1)
+    sound_pub = rospy.Publisher('/mobile_base/commands/sound', Sound, queue_size=1)
     odom_sub = rospy.Subscriber("odom", Odometry, odom_callback)
     bum_sub = rospy.Subscriber("/mobile_base/events/bumper", BumperEvent, bumper_callback)
 
